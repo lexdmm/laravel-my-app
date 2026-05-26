@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domain\Task\TaskPriority;
+use App\Domain\Task\TaskStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class TaskRequest extends FormRequest
 {
@@ -20,8 +23,8 @@ class TaskRequest extends FormRequest
             'description'    => ['nullable', 'string', 'max:2000'],
             'scheduled_date' => ['required', 'date'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
-            'status'         => ['required', 'in:pending,in_progress,completed,cancelled'],
-            'priority'       => ['required', 'in:low,medium,high'],
+            'status'         => ['required', Rule::in(array_column(TaskStatus::cases(), 'value'))],
+            'priority'       => ['required', Rule::in(array_column(TaskPriority::cases(), 'value'))],
         ];
     }
 

@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Task\DTO\CreateTaskInput;
+use App\Domain\Task\DTO\TaskFilters;
+use App\Domain\Task\DTO\UpdateTaskInput;
 use App\Domain\Task\Services\TaskService;
 use App\Domain\Task\Services\WeeklyTaskService;
 use App\Domain\Task\TaskPriority;
 use App\Domain\Task\TaskStatus;
+use App\Domain\Task\ValueObjects\ScheduledDate;
+use App\Domain\Task\ValueObjects\ScheduledTime;
+use App\Domain\Task\ValueObjects\TaskDescription;
+use App\Domain\Task\ValueObjects\TaskTitle;
 use App\Http\Requests\TaskRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class TaskController extends Controller
+class TaskController
 {
     public function __construct(
         private readonly TaskService       $taskService,
@@ -22,13 +29,17 @@ class TaskController extends Controller
 
     public function index(Request $request): View
     {
-        $filters = $request->only(['status', 'date_from', 'date_to']);
+        $filters = new TaskFilters(
+            status:   $request->input('status') ?: null,
+            dateFrom: $request->input('date_from') ?: null,
+            dateTo:   $request->input('date_to') ?: null,
+        );
 
         return view('tasks.index', [
             'tasks'      => $this->taskService->list($filters),
             'statuses'   => TaskStatus::options(),
             'priorities' => TaskPriority::options(),
-            'filters'    => $filters,
+            'filters'    => ['status' => $filters->status, 'date_from' => $filters->dateFrom, 'date_to' => $filters->dateTo],
         ]);
     }
 
@@ -44,7 +55,7 @@ class TaskController extends Controller
 
     public function store(TaskRequest $request): RedirectResponse
     {
-        $this->taskService->create($request->validated());
+        $this->taskService->create($this->buildCreateInput($request));
 
         return redirect()->route('tasks.index')->with('success', 'Tarefa criada com sucesso.');
     }
@@ -64,7 +75,7 @@ class TaskController extends Controller
     public function update(TaskRequest $request, int $id): RedirectResponse
     {
         $task = $this->taskService->findOrFail($id);
-        $this->taskService->update($task, $request->validated());
+        $this->taskService->update($task, $this->buildUpdateInput($request));
 
         return redirect()->route('tasks.index')->with('success', 'Tarefa atualizada com sucesso.');
     }
@@ -79,8 +90,32 @@ class TaskController extends Controller
 
     public function week(Request $request): View
     {
-        $data = $this->weeklyTaskService->getWeek($request->input('start', now()->toDateString()));
+        return view('tasks.week', $this->weeklyTaskService->getWeek(
+            $request->input('start', now()->toDateString())
+        ));
+    }
 
-        return view('tasks.week', $data);
+    private function buildCreateInput(TaskRequest $request): CreateTaskInput
+    {
+        return new CreateTaskInput(
+            title:         new TaskTitle($request->input('title')),
+            description:   $request->filled('description') ? new TaskDescription($request->input('description')) : null,
+            scheduledDate: new ScheduledDate($request->input('scheduled_date')),
+            scheduledTime: $request->filled('scheduled_time') ? new ScheduledTime($request->input('scheduled_time')) : null,
+            status:        TaskStatus::from($request->input('status')),
+            priority:      TaskPriority::from($request->input('priority')),
+        );
+    }
+
+    private function buildUpdateInput(TaskRequest $request): UpdateTaskInput
+    {
+        return new UpdateTaskInput(
+            title:         new TaskTitle($request->input('title')),
+            description:   $request->filled('description') ? new TaskDescription($request->input('description')) : null,
+            scheduledDate: new ScheduledDate($request->input('scheduled_date')),
+            scheduledTime: $request->filled('scheduled_time') ? new ScheduledTime($request->input('scheduled_time')) : null,
+            status:        TaskStatus::from($request->input('status')),
+            priority:      TaskPriority::from($request->input('priority')),
+        );
     }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Repositories;
 
+use App\Domain\Task\DTO\CreateTaskInput;
+use App\Domain\Task\DTO\TaskFilters;
+use App\Domain\Task\DTO\UpdateTaskInput;
 use App\Domain\Task\Repositories\TaskRepositoryInterface;
 use App\Domain\Task\Task as TaskEntity;
 use App\Infrastructure\Persistence\TaskMapper;
@@ -27,20 +30,20 @@ class EloquentTaskRepository implements TaskRepositoryInterface
             ->map(TaskMapper::toEntity(...));
     }
 
-    public function getFiltered(array $filters): LengthAwarePaginator
+    public function getFiltered(TaskFilters $filters): LengthAwarePaginator
     {
         $query = TaskModel::query();
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if ($filters->status !== null) {
+            $query->where('status', $filters->status);
         }
 
-        if (!empty($filters['date_from'])) {
-            $query->whereDate('scheduled_date', '>=', $filters['date_from']);
+        if ($filters->dateFrom !== null) {
+            $query->whereDate('scheduled_date', '>=', $filters->dateFrom);
         }
 
-        if (!empty($filters['date_to'])) {
-            $query->whereDate('scheduled_date', '<=', $filters['date_to']);
+        if ($filters->dateTo !== null) {
+            $query->whereDate('scheduled_date', '<=', $filters->dateTo);
         }
 
         $paginator = $query->orderBy('scheduled_date')->orderBy('scheduled_time')->paginate(15)->withQueryString();
@@ -50,14 +53,28 @@ class EloquentTaskRepository implements TaskRepositoryInterface
         return $paginator;
     }
 
-    public function create(array $data): TaskEntity
+    public function create(CreateTaskInput $input): TaskEntity
     {
-        return TaskMapper::toEntity(TaskModel::create($data));
+        return TaskMapper::toEntity(TaskModel::create([
+            'title'          => $input->title->value,
+            'description'    => $input->description?->value,
+            'scheduled_date' => $input->scheduledDate->toDateString(),
+            'scheduled_time' => $input->scheduledTime?->value,
+            'status'         => $input->status->value,
+            'priority'       => $input->priority->value,
+        ]));
     }
 
-    public function update(TaskEntity $task, array $data): void
+    public function update(TaskEntity $task, UpdateTaskInput $input): void
     {
-        TaskModel::findOrFail($task->id)->update($data);
+        TaskModel::findOrFail($task->id)->update([
+            'title'          => $input->title->value,
+            'description'    => $input->description?->value,
+            'scheduled_date' => $input->scheduledDate->toDateString(),
+            'scheduled_time' => $input->scheduledTime?->value,
+            'status'         => $input->status->value,
+            'priority'       => $input->priority->value,
+        ]);
     }
 
     public function delete(TaskEntity $task): void

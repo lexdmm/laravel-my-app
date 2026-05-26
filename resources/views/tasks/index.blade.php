@@ -65,27 +65,27 @@
             <tbody>
                 @foreach($tasks as $task)
                     <tr>
-                        <td>{{ $task->title }}</td>
-                        <td>{{ $task->scheduled_date->format('d/m/Y') }}</td>
-                        <td>{{ $task->scheduled_time ? substr($task->scheduled_time, 0, 5) : '—' }}</td>
+                        <td>{{ $task->title->value }}</td>
+                        <td>{{ $task->scheduledDate->format('d/m/Y') }}</td>
+                        <td>{{ $task->scheduledTime?->formatted() ?? '—' }}</td>
                         <td>
-                            <span class="badge {{ $task->priorityBadgeClass() }}">
-                                {{ $task->priority_label }}
+                            <span class="badge {{ \App\Http\Presenters\TaskPresenter::priorityBadgeClass($task->priority) }}">
+                                {{ $task->priority->label() }}
                             </span>
                         </td>
                         <td>
-                            <span class="badge {{ $task->statusBadgeClass() }}">
-                                {{ $task->status_label }}
+                            <span class="badge {{ \App\Http\Presenters\TaskPresenter::statusBadgeClass($task->status) }}">
+                                {{ $task->status->label() }}
                             </span>
                         </td>
                         <td class="text-end">
-                            <a href="{{ route('tasks.edit', $task) }}"
+                            <a href="{{ route('tasks.edit', $task->id) }}"
                                class="btn btn-outline-secondary btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form method="POST" action="{{ route('tasks.destroy', $task) }}"
+                            <form method="POST" action="{{ route('tasks.destroy', $task->id) }}"
                                   class="d-inline"
-                                  onsubmit="return confirm('Excluir a tarefa &quot;{{ addslashes($task->title) }}&quot;?')">
+                                  onsubmit="return confirm('Excluir a tarefa &quot;{{ addslashes($task->title->value) }}&quot;?')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">

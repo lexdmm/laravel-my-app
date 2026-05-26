@@ -4,110 +4,83 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Task\Services\TaskService;
+use App\Domain\Task\Services\WeeklyTaskService;
+use App\Domain\Task\TaskPriority;
+use App\Domain\Task\TaskStatus;
 use App\Http\Requests\TaskRequest;
-use App\Models\Task;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\View\View;
 
 class TaskController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        private readonly TaskService       $taskService,
+        private readonly WeeklyTaskService $weeklyTaskService,
+    ) {}
+
+    public function index(Request $request): View
     {
-        $query = Task::query();
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('scheduled_date', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('scheduled_date', '<=', $request->date_to);
-        }
-
-        $tasks = $query->orderBy('scheduled_date')->orderBy('scheduled_time')->paginate(15)->withQueryString();
+        $filters = $request->only(['status', 'date_from', 'date_to']);
 
         return view('tasks.index', [
-            'tasks'      => $tasks,
-            'statuses'   => Task::STATUSES,
-            'priorities' => Task::PRIORITIES,
-            'filters'    => $request->only(['status', 'date_from', 'date_to']),
+            'tasks'      => $this->taskService->list($filters),
+            'statuses'   => TaskStatus::options(),
+            'priorities' => TaskPriority::options(),
+            'filters'    => $filters,
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request): View
     {
-        $task = new Task();
-
-        if ($request->filled('date')) {
-            $task->scheduled_date = Carbon::parse($request->input('date'));
-        }
-
         return view('tasks.form', [
-            'task'       => $task,
-            'statuses'   => Task::STATUSES,
-            'priorities' => Task::PRIORITIES,
+            'task'          => null,
+            'scheduledDate' => $request->input('date'),
+            'statuses'      => TaskStatus::options(),
+            'priorities'    => TaskPriority::options(),
         ]);
     }
 
-    public function store(TaskRequest $request)
+    public function store(TaskRequest $request): RedirectResponse
     {
-        Task::create($request->validated());
+        $this->taskService->create($request->validated());
 
         return redirect()->route('tasks.index')->with('success', 'Tarefa criada com sucesso.');
     }
 
-    public function edit(Task $task)
+    public function edit(int $id): View
     {
+        $task = $this->taskService->findOrFail($id);
+
         return view('tasks.form', [
-            'task'       => $task,
-            'statuses'   => Task::STATUSES,
-            'priorities' => Task::PRIORITIES,
+            'task'          => $task,
+            'scheduledDate' => $task->scheduledDate->toDateString(),
+            'statuses'      => TaskStatus::options(),
+            'priorities'    => TaskPriority::options(),
         ]);
     }
 
-    public function update(TaskRequest $request, Task $task)
+    public function update(TaskRequest $request, int $id): RedirectResponse
     {
-        $task->update($request->validated());
+        $task = $this->taskService->findOrFail($id);
+        $this->taskService->update($task, $request->validated());
 
         return redirect()->route('tasks.index')->with('success', 'Tarefa atualizada com sucesso.');
     }
 
-    public function destroy(Task $task)
+    public function destroy(int $id): RedirectResponse
     {
-        $task->delete();
+        $task = $this->taskService->findOrFail($id);
+        $this->taskService->delete($task);
 
         return redirect()->route('tasks.index')->with('success', 'Tarefa excluída com sucesso.');
     }
 
-    public function week(Request $request)
+    public function week(Request $request): View
     {
-        $start = $request->filled('start')
-            ? Carbon::parse($request->input('start'))->startOfWeek(Carbon::MONDAY)
-            : Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $data = $this->weeklyTaskService->getWeek($request->input('start', now()->toDateString()));
 
-        $end = $start->copy()->endOfWeek(Carbon::SUNDAY);
-
-        $tasks = Task::query()
-            ->whereBetween('scheduled_date', [$start->toDateString(), $end->toDateString()])
-            ->orderBy('scheduled_time')
-            ->get()
-            ->groupBy(fn (Task $task): string => $task->scheduled_date->toDateString());
-
-        $days = collect();
-        for ($day = $start->copy(); $day->lte($end); $day->addDay()) {
-            $days->put($day->toDateString(), $day->copy());
-        }
-
-        return view('tasks.week', [
-            'tasksByDay' => $tasks,
-            'days'       => $days,
-            'start'      => $start,
-            'end'        => $end,
-            'prevStart'  => $start->copy()->subWeek()->toDateString(),
-            'nextStart'  => $start->copy()->addWeek()->toDateString(),
-        ]);
+        return view('tasks.week', $data);
     }
 }

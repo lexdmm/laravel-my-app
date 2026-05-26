@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $task->exists ? 'Editar Tarefa' : 'Nova Tarefa')
+@section('title', $task ? 'Editar Tarefa' : 'Nova Tarefa')
 
 @section('content')
 
@@ -12,16 +12,16 @@
                 <i class="bi bi-arrow-left"></i>
             </a>
             <h5 class="mb-0 fw-semibold">
-                {{ $task->exists ? 'Editar Tarefa' : 'Nova Tarefa' }}
+                {{ $task ? 'Editar Tarefa' : 'Nova Tarefa' }}
             </h5>
         </div>
 
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <form method="POST"
-                      action="{{ $task->exists ? route('tasks.update', $task) : route('tasks.store') }}">
+                      action="{{ $task ? route('tasks.update', $task->id) : route('tasks.store') }}">
                     @csrf
-                    @if($task->exists)
+                    @if($task)
                         @method('PUT')
                     @endif
 
@@ -30,7 +30,7 @@
                         <label for="title" class="form-label">Título <span class="text-danger">*</span></label>
                         <input type="text" id="title" name="title"
                                class="form-control @error('title') is-invalid @enderror"
-                               value="{{ old('title', $task->title) }}"
+                               value="{{ old('title', $task?->title->value) }}"
                                placeholder="Descreva a tarefa"
                                autofocus>
                         @error('title')
@@ -43,7 +43,7 @@
                         <label for="description" class="form-label">Descrição</label>
                         <textarea id="description" name="description" rows="3"
                                   class="form-control @error('description') is-invalid @enderror"
-                                  placeholder="Detalhes opcionais">{{ old('description', $task->description) }}</textarea>
+                                  placeholder="Detalhes opcionais">{{ old('description', $task?->description?->value) }}</textarea>
                         @error('description')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -57,7 +57,7 @@
                             </label>
                             <input type="date" id="scheduled_date" name="scheduled_date"
                                    class="form-control @error('scheduled_date') is-invalid @enderror"
-                                   value="{{ old('scheduled_date', $task->scheduled_date?->format('Y-m-d')) }}">
+                                   value="{{ old('scheduled_date', $task?->scheduledDate->toDateString() ?? $scheduledDate) }}">
                             @error('scheduled_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -68,7 +68,7 @@
                             <label for="scheduled_time" class="form-label">Horário</label>
                             <input type="time" id="scheduled_time" name="scheduled_time"
                                    class="form-control @error('scheduled_time') is-invalid @enderror"
-                                   value="{{ old('scheduled_time', $task->scheduled_time ? substr($task->scheduled_time, 0, 5) : '') }}">
+                                   value="{{ old('scheduled_time', $task?->scheduledTime?->formatted() ?? '') }}">
                             @error('scheduled_time')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -85,7 +85,7 @@
                                     class="form-select @error('status') is-invalid @enderror">
                                 @foreach($statuses as $value => $label)
                                     <option value="{{ $value }}"
-                                            @selected(old('status', $task->status ?? 'pending') === $value)>
+                                            @selected(old('status', $task?->status->value ?? 'pending') === $value)>
                                         {{ $label }}
                                     </option>
                                 @endforeach
@@ -104,7 +104,7 @@
                                     class="form-select @error('priority') is-invalid @enderror">
                                 @foreach($priorities as $value => $label)
                                     <option value="{{ $value }}"
-                                            @selected(old('priority', $task->priority ?? 'medium') === $value)>
+                                            @selected(old('priority', $task?->priority->value ?? 'medium') === $value)>
                                         {{ $label }}
                                     </option>
                                 @endforeach
@@ -118,7 +118,7 @@
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg"></i>
-                            {{ $task->exists ? 'Salvar Alterações' : 'Criar Tarefa' }}
+                            {{ $task ? 'Salvar Alterações' : 'Criar Tarefa' }}
                         </button>
                         <a href="{{ route('tasks.index') }}" class="btn btn-outline-secondary">
                             Cancelar

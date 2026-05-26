@@ -55,32 +55,32 @@
                             <div class="border rounded p-2 mb-2 bg-white">
                                 <div class="d-flex justify-content-between align-items-start gap-1">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <div class="fw-semibold small text-truncate" title="{{ $task->title }}">
-                                            {{ $task->title }}
+                                        <div class="fw-semibold small text-truncate" title="{{ $task->title->value }}">
+                                            {{ $task->title->value }}
                                         </div>
-                                        @if($task->scheduled_time)
+                                        @if($task->scheduledTime)
                                             <div class="text-muted" style="font-size: .75rem">
                                                 <i class="bi bi-clock"></i>
-                                                {{ substr($task->scheduled_time, 0, 5) }}
+                                                {{ $task->scheduledTime->formatted() }}
                                             </div>
                                         @endif
                                         <div class="mt-1 d-flex gap-1 flex-wrap">
-                                            <span class="badge {{ $task->statusBadgeClass() }}" style="font-size: .7rem">
-                                                {{ $task->status_label }}
+                                            <span class="badge {{ \App\Http\Presenters\TaskPresenter::statusBadgeClass($task->status) }}" style="font-size: .7rem">
+                                                {{ $task->status->label() }}
                                             </span>
-                                            <span class="badge {{ $task->priorityBadgeClass() }}" style="font-size: .7rem">
-                                                {{ $task->priority_label }}
+                                            <span class="badge {{ \App\Http\Presenters\TaskPresenter::priorityBadgeClass($task->priority) }}" style="font-size: .7rem">
+                                                {{ $task->priority->label() }}
                                             </span>
                                         </div>
                                     </div>
                                     <div class="d-flex flex-column gap-1 flex-shrink-0">
-                                        <a href="{{ route('tasks.edit', $task) }}"
+                                        <a href="{{ route('tasks.edit', $task->id) }}"
                                            class="btn btn-outline-secondary btn-sm p-0 px-1"
                                            title="Editar" style="font-size: .75rem">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="{{ route('tasks.destroy', $task) }}"
-                                              onsubmit="return confirm('Excluir &quot;{{ addslashes($task->title) }}&quot;?')">
+                                        <form method="POST" action="{{ route('tasks.destroy', $task->id) }}"
+                                              onsubmit="return confirm('Excluir &quot;{{ addslashes($task->title->value) }}&quot;?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
